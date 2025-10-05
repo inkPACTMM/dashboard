@@ -62,6 +62,9 @@ class Dashboard {
                 case 'images':
                     this.loadImages();
                     break;
+                case 'pdfs':
+                    this.loadPDFs();
+                    break;
             }
         } catch (error) {
             contentArea.innerHTML = `
@@ -618,6 +621,193 @@ class Dashboard {
         }
     }
 
+    async loadPDFs() {
+        const contentArea = document.getElementById('content-area');
+        
+        // Show loading state
+        contentArea.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i></div>';
+        
+        try {
+            // Fetch PDFs
+            const response = await fetch(`/pdfs`);
+            const result = await response.json();
+            const pdfs = result.pdfs || [];
+            
+            contentArea.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3><i class="fas fa-file-pdf me-2 text-primary"></i>PDF Management</h3>
+                    <div>
+                        <label for="pdfUploadMain" class="btn btn-primary">
+                            <i class="fas fa-upload me-2"></i>Upload PDF
+                            <input type="file" id="pdfUploadMain" accept="application/pdf" style="display: none;">
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>PDF Files:</strong> 
+                    <span class="badge bg-primary ms-2">${pdfs.length} file${pdfs.length !== 1 ? 's' : ''}</span>
+                </div>
+                
+                ${pdfs.length === 0 ? `
+                    <div class="text-center py-5">
+                        <i class="fas fa-file-pdf fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No PDF files yet.</p>
+                        <p class="text-muted"><small>Upload PDFs using the "Upload PDF" button above.</small></p>
+                    </div>
+                ` : `
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Filename</th>
+                                    <th>Size</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${pdfs.map(pdf => {
+                                    const pdfPath = `data/pdf/${pdf.filename}`;
+                                    return `
+                                        <tr>
+                                            <td>
+                                                <i class="fas fa-file-pdf text-danger me-2"></i>
+                                                <strong>${pdf.filename}</strong>
+                                            </td>
+                                            <td><small class="text-muted">${pdf.size || 'N/A'}</small></td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary" 
+                                                        onclick="dashboard.copyPDFPath('${pdfPath}')" 
+                                                        title="Copy Path">
+                                                    <i class="fas fa-copy"></i> Copy Path
+                                                </button>
+                                                <a href="${pdfPath}" target="_blank" class="btn btn-sm btn-outline-info" title="View PDF">
+                                                    <i class="fas fa-eye"></i> View
+                                                </a>
+                                                <button class="btn btn-sm btn-outline-danger" 
+                                                        onclick="dashboard.deletePDF('${pdf.filename}')" 
+                                                        title="Delete">
+                                                    <i class="fas fa-trash"></i> Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `}
+            `;
+
+            // Bind upload event
+            const uploadInput = document.getElementById('pdfUploadMain');
+            if (uploadInput) {
+                uploadInput.removeEventListener('change', this.handlePDFUpload);
+                this.handlePDFUpload = (e) => {
+                    this.uploadPDF(e.target.files[0]);
+                };
+                uploadInput.addEventListener('change', this.handlePDFUpload);
+            }
+            
+        } catch (error) {
+            console.error('Error loading PDFs:', error);
+            contentArea.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error loading PDFs: ${error.message}
+                </div>
+            `;
+        }
+    }
+
+    copyPDFPath(path) {
+        navigator.clipboard.writeText(path).then(() => {
+            const btn = event.target.closest('button');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            btn.classList.remove('btn-outline-primary');
+            btn.classList.add('btn-success');
+            
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-primary');
+            }, 2000);
+        }).catch(err => {
+            alert('Failed to copy path: ' + err.message);
+        });
+    }
+
+    async deletePDF(filename) {
+        if (!confirm(`Are you sure you want to delete "${filename}"?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/delete-pdf/${filename}`, {
+                method: 'DELETE'
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('PDF deleted successfully!');
+                this.loadPDFs();
+            } else {
+                throw new Error(result.message || 'Failed to delete PDF');
+            }
+        } catch (error) {
+            alert(`Error deleting PDF: ${error.message}`);
+        }
+    }
+
+    async uploadPDF(file) {
+        if (!file) return;
+        
+        try {
+            const formData = new FormData();
+            formData.append('pdf', file);
+
+            console.log('Uploading PDF:', file.name);
+
+            const response = await fetch(`/upload-pdf`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    alert(`PDF "${file.name}" uploaded successfully!\nPath: ${result.path}`);
+                    
+                    // Check if we're in the modal (if pdfModal is visible)
+                    const pdfModal = document.getElementById('pdfModal');
+                    if (pdfModal && pdfModal.classList.contains('show')) {
+                        // Reload modal PDF list
+                        await this.loadPDFsForModal();
+                        // Clear the file input
+                        const modalUploadInput = document.getElementById('pdfUpload');
+                        if (modalUploadInput) {
+                            modalUploadInput.value = '';
+                        }
+                    } else {
+                        // Reload main PDFs section
+                        this.loadPDFs();
+                    }
+                    return;
+                } else {
+                    throw new Error(result.message || 'Upload failed');
+                }
+            } else {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+        } catch (error) {
+            alert(`Error uploading PDF: ${error.message}`);
+        }
+    }
+
     createPlaceholderImage(text, width = 150, height = 100) {
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -809,22 +999,16 @@ class Dashboard {
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="form-floating mb-3">
                                 <input type="number" class="form-control" id="pages" value="${item.pages || ''}">
                                 <label for="pages">Pages</label>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="form-floating mb-3">
                                 <input type="text" class="form-control" id="size" value="${item.size || ''}">
                                 <label for="size">File Size</label>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-floating mb-3">
-                                <input type="url" class="form-control" id="pdfUrl" value="${item.pdfUrl || ''}" placeholder="https://...">
-                                <label for="pdfUrl">PDF URL (optional)</label>
                             </div>
                         </div>
                     </div>
@@ -840,6 +1024,16 @@ class Dashboard {
                             </button>
                         </div>
                         <small class="text-muted">Select a cover image from the books category</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">PDF File</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="pdfUrl" value="${item.pdfUrl || ''}" placeholder="Click 'Select' to choose a PDF file">
+                            <button class="btn btn-outline-secondary" type="button" onclick="dashboard.openPDFModal('pdfUrl')">
+                                <i class="fas fa-file-pdf"></i> Select PDF
+                            </button>
+                        </div>
+                        <small class="text-muted">Select a PDF file or leave empty if not available</small>
                     </div>
                     <div class="form-floating mb-3">
                         <textarea class="form-control" id="description" style="height: 100px">${item.description || ''}</textarea>
@@ -1329,6 +1523,106 @@ Wrap up your post here.
         
         // Trigger the click event of the file input
         document.getElementById('imageUpload').click();
+    }
+
+    async openPDFModal(field) {
+        this.currentPDFField = field;
+        
+        const modal = new bootstrap.Modal(document.getElementById('pdfModal'));
+        const pdfGrid = document.getElementById('pdfGrid');
+        
+        // Show loading state
+        pdfGrid.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i></div>';
+        
+        modal.show();
+        
+        // Bind upload event for the modal's upload input
+        const modalUploadInput = document.getElementById('pdfUpload');
+        if (modalUploadInput) {
+            // Remove existing listener if any
+            const newInput = modalUploadInput.cloneNode(true);
+            modalUploadInput.parentNode.replaceChild(newInput, modalUploadInput);
+            
+            // Add new listener
+            newInput.addEventListener('change', (e) => {
+                if (e.target.files[0]) {
+                    this.uploadPDF(e.target.files[0]);
+                }
+            });
+        }
+        
+        // Load PDFs for modal
+        await this.loadPDFsForModal();
+    }
+
+    async loadPDFsForModal() {
+        const pdfGrid = document.getElementById('pdfGrid');
+        
+        try {
+            const response = await fetch(`/pdfs`);
+            const result = await response.json();
+            const pdfs = result.pdfs || [];
+            
+            if (pdfs.length === 0) {
+                pdfGrid.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-file-pdf fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No PDF files available.</p>
+                        <p class="text-muted"><small>Go to PDFs section to upload files.</small></p>
+                    </div>
+                `;
+                return;
+            }
+
+            pdfGrid.innerHTML = `
+                <div class="list-group">
+                    ${pdfs.map(pdf => {
+                        const pdfPath = `data/pdf/${pdf.filename}`;
+                        return `
+                            <a href="#" class="list-group-item list-group-item-action" 
+                               onclick="dashboard.selectPDFItem('${pdfPath}'); return false;">
+                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-file-pdf text-danger me-2"></i>
+                                        <strong>${pdf.filename}</strong>
+                                    </div>
+                                    <small class="text-muted">${pdf.size}</small>
+                                </div>
+                            </a>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        } catch (error) {
+            console.error('Error loading PDFs for modal:', error);
+            pdfGrid.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error loading PDFs: ${error.message}
+                </div>
+            `;
+        }
+    }
+
+    selectPDFItem(pdfPath) {
+        this.selectedPDF = pdfPath;
+        
+        if (this.currentPDFField) {
+            // Update the specific field that was clicked
+            const fieldInput = document.getElementById(this.currentPDFField);
+            if (fieldInput) {
+                fieldInput.value = pdfPath;
+            }
+            
+            // Close the modal
+            const modalElement = document.getElementById('pdfModal');
+            if (modalElement) {
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) {
+                    modal.hide();
+                }
+            }
+        }
     }
 
     async uploadImage(file) {

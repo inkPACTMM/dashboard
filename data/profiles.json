@@ -38,7 +38,7 @@
       "role": "Content Writer",
       "term": "2025 - Present",
       "bio": "Creative storyteller with a unique voice and a love for exploring new ideas. Enjoys writing across genres, from thoughtful opinion pieces to imaginative narratives, making each contribution stand out.",
-      "avatar": "../data/images/default-avatar.jpg"
+      "avatar": "data/thumbnails/profiles/default.jpg"
     },
     {
       "id": "6",
@@ -46,7 +46,7 @@
       "role": "Graphic Designer",
       "term": "2025 - Present",
       "bio": "Graphic designer who blends creativity with precision, bringing ideas to life through innovative visuals. Known for adaptability and a strong collaborative spirit in fast-moving projects.",
-      "avatar": "../data/images/default-avatar.jpg"
+      "avatar": "data/thumbnails/profiles/default.jpg"
     }
   ]
 }

@@ -58,6 +58,7 @@ async function ensureDataDirectory() {
         await fs.mkdir(path.join(dataDir, 'thumbnails', 'blogs'), { recursive: true });
         await fs.mkdir(path.join(dataDir, 'thumbnails', 'books'), { recursive: true });
         await fs.mkdir(path.join(dataDir, 'thumbnails', 'profiles'), { recursive: true });
+        await fs.mkdir(path.join(dataDir, 'pdf'), { recursive: true });
     } catch (error) {
         console.error('Error creating data directories:', error);
     }
@@ -362,6 +363,150 @@ app.delete('/delete-image/:section/:filename', async (req, res) => {
         });
     } catch (error) {
         console.error('Error deleting image:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// Configure multer for PDF uploads
+const pdfStorage = multer.diskStorage({
+    destination: async (req, file, cb) => {
+        const uploadDir = path.join(__dirname, 'data', 'pdf');
+        console.log('PDF upload destination:', uploadDir);
+        try {
+            await fs.mkdir(uploadDir, { recursive: true });
+            cb(null, uploadDir);
+        } catch (error) {
+            cb(error);
+        }
+    },
+    filename: (req, file, cb) => {
+        // Keep original filename for PDFs
+        const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9_.-]/g, '_');
+        cb(null, sanitizedName);
+    }
+});
+
+const pdfUpload = multer({
+    storage: pdfStorage,
+    limits: {
+        fileSize: 50 * 1024 * 1024 // 50MB limit for PDFs
+    },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'application/pdf') {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file type. Only PDF files are allowed.'));
+        }
+    }
+});
+
+// Upload PDF
+app.post('/upload-pdf', pdfUpload.single('pdf'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'No PDF uploaded'
+            });
+        }
+
+        const relativePath = path.join('data', 'pdf', req.file.filename);
+        console.log('PDF uploaded:', req.file.filename, '| Path:', relativePath);
+        
+        res.json({
+            success: true,
+            message: 'PDF uploaded successfully',
+            filename: req.file.filename,
+            path: relativePath,
+            size: req.file.size,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error uploading PDF:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// Get list of PDFs
+app.get('/pdfs', async (req, res) => {
+    try {
+        const pdfDir = path.join(__dirname, 'data', 'pdf');
+        
+        try {
+            const files = await fs.readdir(pdfDir);
+            const pdfFiles = files.filter(file => file.toLowerCase().endsWith('.pdf'));
+            
+            // Get file stats for size information
+            const pdfsWithStats = await Promise.all(
+                pdfFiles.map(async (file) => {
+                    try {
+                        const filePath = path.join(pdfDir, file);
+                        const stats = await fs.stat(filePath);
+                        const sizeInMB = (stats.size / (1024 * 1024)).toFixed(2);
+                        return {
+                            filename: file,
+                            size: `${sizeInMB} MB`
+                        };
+                    } catch (err) {
+                        return {
+                            filename: file,
+                            size: 'Unknown'
+                        };
+                    }
+                })
+            );
+            
+            res.json({
+                success: true,
+                pdfs: pdfsWithStats,
+                count: pdfFiles.length
+            });
+        } catch (error) {
+            // Directory doesn't exist or is empty
+            res.json({
+                success: true,
+                pdfs: [],
+                count: 0
+            });
+        }
+    } catch (error) {
+        console.error('Error listing PDFs:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// Delete a PDF
+app.delete('/delete-pdf/:filename', async (req, res) => {
+    try {
+        const { filename } = req.params;
+        
+        // Security: validate filename
+        if (!/^[a-zA-Z0-9_.-]+\.pdf$/i.test(filename)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid filename'
+            });
+        }
+        
+        const filePath = path.join(__dirname, 'data', 'pdf', filename);
+        await fs.unlink(filePath);
+        
+        res.json({
+            success: true,
+            message: 'PDF deleted successfully',
+            filename: filename
+        });
+    } catch (error) {
+        console.error('Error deleting PDF:', error);
         res.status(500).json({
             success: false,
             message: error.message
