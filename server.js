@@ -564,6 +564,367 @@ app.get('/debug/blogs', async (req, res) => {
     }
 });
 
+// ============================
+// PUBLIC API ENDPOINTS
+// ============================
+
+// API: Get all blogs
+app.get('/api/blogs', async (req, res) => {
+    try {
+        const filePath = path.join(__dirname, 'data', 'blogs.json');
+        const data = await fs.readFile(filePath, 'utf8');
+        const parsed = JSON.parse(data);
+        
+        res.json({
+            success: true,
+            count: parsed.blogs ? parsed.blogs.length : 0,
+            data: parsed.blogs || []
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// API: Get single blog by ID
+app.get('/api/blogs/:id', async (req, res) => {
+    try {
+        const blogId = parseInt(req.params.id);
+        const filePath = path.join(__dirname, 'data', 'blogs.json');
+        const data = await fs.readFile(filePath, 'utf8');
+        const parsed = JSON.parse(data);
+        
+        const blog = parsed.blogs.find(b => b.id === blogId);
+        
+        if (!blog) {
+            return res.status(404).json({
+                success: false,
+                message: 'Blog not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: blog
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// API: Get blog markdown content
+app.get('/api/blogs/:id/content', async (req, res) => {
+    try {
+        const blogId = req.params.id;
+        const mdPath = path.join(__dirname, 'data', 'blogs', `${blogId}.md`);
+        
+        const content = await fs.readFile(mdPath, 'utf8');
+        
+        res.json({
+            success: true,
+            blogId: blogId,
+            content: content
+        });
+    } catch (error) {
+        res.status(404).json({
+            success: false,
+            message: 'Markdown file not found'
+        });
+    }
+});
+
+// API: Get all books
+app.get('/api/books', async (req, res) => {
+    try {
+        const filePath = path.join(__dirname, 'data', 'books.json');
+        const data = await fs.readFile(filePath, 'utf8');
+        const parsed = JSON.parse(data);
+        
+        res.json({
+            success: true,
+            count: parsed.books ? parsed.books.length : 0,
+            data: parsed.books || []
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// API: Get single book by ID
+app.get('/api/books/:id', async (req, res) => {
+    try {
+        const bookId = parseInt(req.params.id);
+        const filePath = path.join(__dirname, 'data', 'books.json');
+        const data = await fs.readFile(filePath, 'utf8');
+        const parsed = JSON.parse(data);
+        
+        const book = parsed.books.find(b => b.id === bookId);
+        
+        if (!book) {
+            return res.status(404).json({
+                success: false,
+                message: 'Book not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: book
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// API: Get popular books
+app.get('/api/books/popular', async (req, res) => {
+    try {
+        const filePath = path.join(__dirname, 'data', 'popular-books.json');
+        const data = await fs.readFile(filePath, 'utf8');
+        const parsed = JSON.parse(data);
+        
+        res.json({
+            success: true,
+            count: parsed.popularBooks ? parsed.popularBooks.length : 0,
+            data: parsed.popularBooks || []
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// API: Get all profiles
+app.get('/api/profiles', async (req, res) => {
+    try {
+        const filePath = path.join(__dirname, 'data', 'profiles.json');
+        const data = await fs.readFile(filePath, 'utf8');
+        const parsed = JSON.parse(data);
+        
+        res.json({
+            success: true,
+            count: parsed.profiles ? parsed.profiles.length : 0,
+            data: parsed.profiles || []
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// API: Get single profile by ID
+app.get('/api/profiles/:id', async (req, res) => {
+    try {
+        const profileId = parseInt(req.params.id);
+        const filePath = path.join(__dirname, 'data', 'profiles.json');
+        const data = await fs.readFile(filePath, 'utf8');
+        const parsed = JSON.parse(data);
+        
+        const profile = parsed.profiles.find(p => p.id === profileId);
+        
+        if (!profile) {
+            return res.status(404).json({
+                success: false,
+                message: 'Profile not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: profile
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// API: Get all PDFs
+app.get('/api/pdfs', async (req, res) => {
+    try {
+        const pdfDir = path.join(__dirname, 'data', 'pdf');
+        const files = await fs.readdir(pdfDir);
+        
+        const pdfFiles = files.filter(file => file.toLowerCase().endsWith('.pdf'));
+        
+        const pdfsWithStats = await Promise.all(pdfFiles.map(async (filename) => {
+            const filePath = path.join(pdfDir, filename);
+            const stats = await fs.stat(filePath);
+            return {
+                filename: filename,
+                path: `data/pdf/${filename}`,
+                size: stats.size,
+                sizeInMB: (stats.size / (1024 * 1024)).toFixed(2),
+                modified: stats.mtime
+            };
+        }));
+        
+        res.json({
+            success: true,
+            count: pdfsWithStats.length,
+            data: pdfsWithStats
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// API: Get all thumbnails from a category
+app.get('/api/thumbnails/:category', async (req, res) => {
+    try {
+        const category = req.params.category; // blogs, books, profiles, or general
+        const thumbnailDir = path.join(__dirname, 'data', 'thumbnails', category);
+        
+        const files = await fs.readdir(thumbnailDir);
+        
+        const imageFiles = files.filter(file => {
+            const ext = path.extname(file).toLowerCase();
+            return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
+        });
+        
+        const thumbnailsWithStats = await Promise.all(imageFiles.map(async (filename) => {
+            const filePath = path.join(thumbnailDir, filename);
+            const stats = await fs.stat(filePath);
+            return {
+                filename: filename,
+                path: `data/thumbnails/${category}/${filename}`,
+                size: stats.size,
+                sizeInKB: (stats.size / 1024).toFixed(2),
+                modified: stats.mtime
+            };
+        }));
+        
+        res.json({
+            success: true,
+            category: category,
+            count: thumbnailsWithStats.length,
+            data: thumbnailsWithStats
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// API: Get all markdown files
+app.get('/api/markdown', async (req, res) => {
+    try {
+        const blogDir = path.join(__dirname, 'data', 'blogs');
+        const files = await fs.readdir(blogDir);
+        
+        const mdFiles = files.filter(file => file.endsWith('.md'));
+        
+        const markdownFiles = await Promise.all(mdFiles.map(async (filename) => {
+            const filePath = path.join(blogDir, filename);
+            const stats = await fs.stat(filePath);
+            const content = await fs.readFile(filePath, 'utf8');
+            
+            return {
+                filename: filename,
+                path: `data/blogs/${filename}`,
+                size: stats.size,
+                modified: stats.mtime,
+                preview: content.substring(0, 200) + (content.length > 200 ? '...' : '')
+            };
+        }));
+        
+        res.json({
+            success: true,
+            count: markdownFiles.length,
+            data: markdownFiles
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// API: Get single markdown file content
+app.get('/api/markdown/:filename', async (req, res) => {
+    try {
+        const filename = req.params.filename;
+        const filePath = path.join(__dirname, 'data', 'blogs', filename);
+        
+        const content = await fs.readFile(filePath, 'utf8');
+        const stats = await fs.stat(filePath);
+        
+        res.json({
+            success: true,
+            filename: filename,
+            content: content,
+            size: stats.size,
+            modified: stats.mtime
+        });
+    } catch (error) {
+        res.status(404).json({
+            success: false,
+            message: 'Markdown file not found'
+        });
+    }
+});
+
+// API: Get all data summary
+app.get('/api/summary', async (req, res) => {
+    try {
+        const blogsPath = path.join(__dirname, 'data', 'blogs.json');
+        const booksPath = path.join(__dirname, 'data', 'books.json');
+        const profilesPath = path.join(__dirname, 'data', 'profiles.json');
+        
+        const blogsData = JSON.parse(await fs.readFile(blogsPath, 'utf8'));
+        const booksData = JSON.parse(await fs.readFile(booksPath, 'utf8'));
+        const profilesData = JSON.parse(await fs.readFile(profilesPath, 'utf8'));
+        
+        const pdfDir = path.join(__dirname, 'data', 'pdf');
+        const pdfFiles = await fs.readdir(pdfDir);
+        const pdfCount = pdfFiles.filter(f => f.endsWith('.pdf')).length;
+        
+        const blogMdDir = path.join(__dirname, 'data', 'blogs');
+        const mdFiles = await fs.readdir(blogMdDir);
+        const mdCount = mdFiles.filter(f => f.endsWith('.md')).length;
+        
+        res.json({
+            success: true,
+            summary: {
+                blogs: blogsData.blogs ? blogsData.blogs.length : 0,
+                books: booksData.books ? booksData.books.length : 0,
+                profiles: profilesData.profiles ? profilesData.profiles.length : 0,
+                pdfs: pdfCount,
+                markdownFiles: mdCount
+            },
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
 // Start server
 async function startServer() {
     await ensureDataDirectory();
@@ -575,6 +936,21 @@ async function startServer() {
 ║                                              ║
 ║  Server running at: http://localhost:${PORT}   ║
 ║  Dashboard URL: http://localhost:${PORT}/index.html ║
+║                                              ║
+║  API Endpoints:                              ║
+║  • GET /api/blogs                            ║
+║  • GET /api/blogs/:id                        ║
+║  • GET /api/blogs/:id/content                ║
+║  • GET /api/books                            ║
+║  • GET /api/books/:id                        ║
+║  • GET /api/books/popular                    ║
+║  • GET /api/profiles                         ║
+║  • GET /api/profiles/:id                     ║
+║  • GET /api/pdfs                             ║
+║  • GET /api/thumbnails/:category             ║
+║  • GET /api/markdown                         ║
+║  • GET /api/markdown/:filename               ║
+║  • GET /api/summary                          ║
 ║                                              ║
 ║  Press Ctrl+C to stop the server            ║
 ╚══════════════════════════════════════════════╝
