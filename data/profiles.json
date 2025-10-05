@@ -1,0 +1,52 @@
+{
+  "profiles": [
+    {
+      "id": "1",
+      "name": "Austin",
+      "role": "Writer",
+      "term": "2025 - Present",
+      "bio": "Visual designer with an eye for detail and a passion for creating bold, striking designs. Combines artistic creativity with technical skill to support projects across multiple campaigns.",
+      "avatar": "../data/thumbnails/profiles/default.jpg"
+    },
+    {
+      "id": "2",
+      "name": "Hnin Thiri Aung",
+      "role": "Content Writer",
+      "term": "2025 - Present",
+      "bio": "Dedicated to crafting compelling narratives that highlight social issues and inspire change. Experienced in digital content creation and community engagement.",
+      "avatar": "../data/thumbnails/profiles/default.jpg"
+    },
+    {
+      "id": "3",
+      "name": "Betty",
+      "role": "Graphic Designer",
+      "term": "2025 - Present",
+      "bio": "Creative graphic designer with a knack for visual storytelling. Skilled in creating engaging designs that complement written content and enhance reader experience.",
+      "avatar": "data/thumbnails/profiles/default.jpg"
+    },
+    {
+      "id": "4",
+      "name": "Phyu Pwint Thant",
+      "role": "Content Writer",
+      "term": "2025 - Present",
+      "bio": "Passionate writer who brings stories to life with clarity and creativity. Skilled at turning ideas into engaging content that resonates with young readers and inspires fresh perspectives.",
+      "avatar": "data/thumbnails/profiles/default.jpg"
+    },
+    {
+      "id": "5",
+      "name": "Roelin",
+      "role": "Content Writer",
+      "term": "2025 - Present",
+      "bio": "Creative storyteller with a unique voice and a love for exploring new ideas. Enjoys writing across genres, from thoughtful opinion pieces to imaginative narratives, making each contribution stand out.",
+      "avatar": "../data/images/default-avatar.jpg"
+    },
+    {
+      "id": "6",
+      "name": "Sheri",
+      "role": "Graphic Designer",
+      "term": "2025 - Present",
+      "bio": "Graphic designer who blends creativity with precision, bringing ideas to life through innovative visuals. Known for adaptability and a strong collaborative spirit in fast-moving projects.",
+      "avatar": "../data/images/default-avatar.jpg"
+    }
+  ]
+}
