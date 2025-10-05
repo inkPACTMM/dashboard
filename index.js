@@ -649,18 +649,21 @@ class Dashboard {
 
     createNew(type) {
         const templates = {
-            blog: {
-                id: Date.now(),
-                blogName: '',
-                writers: [''],
-                graphicDesigners: [''],
-                date: new Date().toISOString().split('T')[0],
-                description: '',
-                mdPath: `../data/blogs/b${Date.now()}.md`,
-                categories: [],
-                readTime: '5 min read',
-                image: ''
-            },
+            blog: (() => {
+                const id = Date.now();
+                return {
+                    id: id,
+                    blogName: '',
+                    writers: [''],
+                    graphicDesigners: [''],
+                    date: new Date().toISOString().split('T')[0],
+                    description: '',
+                    mdPath: `../data/blogs/${id}.md`,
+                    categories: [],
+                    readTime: '5 min read',
+                    image: ''
+                };
+            })(),
             book: {
                 title: '',
                 author: '',
@@ -995,6 +998,59 @@ Wrap up your post here.
         }
     }
 
+    async createMarkdownFile(filename, title) {
+        const content = `# ${title}
+
+This is a new blog post. Start writing your content here...
+
+## Introduction
+
+Write your introduction here.
+
+## Main Content
+
+Add your main content here.
+
+### Subsection
+
+More details...
+
+## Conclusion
+
+Wrap up your post here.
+
+---
+
+*Created on ${new Date().toLocaleDateString()}*`;
+
+        try {
+            const response = await fetch('/save-markdown', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    filename: filename,
+                    content: content
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.message || 'Unknown error occurred');
+            }
+
+            console.log(`Markdown file ${filename} created successfully`);
+        } catch (error) {
+            console.error(`Error creating markdown file ${filename}:`, error);
+            // Don't alert here, just log - we don't want to interrupt the blog creation flow
+        }
+    }
+
     async saveItem() {
         const form = document.getElementById('editForm');
         const data = {};
@@ -1058,6 +1114,11 @@ Wrap up your post here.
 
             console.log('About to save data:', dataToSave);
             await this.saveDataToServer(this.currentSection, dataToSave);
+            
+            // If it's a new blog, create the markdown file
+            if (this.editingItem === -1 && this.currentSection === 'blogs' && data.mdPath) {
+                await this.createMarkdownFile(data.mdPath, data.blogName || 'Untitled Blog');
+            }
             
             alert('Item saved successfully to server!');
             
